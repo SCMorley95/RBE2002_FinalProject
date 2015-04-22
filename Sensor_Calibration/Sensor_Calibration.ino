@@ -2,36 +2,39 @@
 #include <Serial.h>
 #include <ultrasonic.h>
 
-#define US_PING //All of the digital / analog inputs and outputs need to be entered
-#define US_ECHO
-#define STEPPER_STEP
-#define STEPPER_DIR
-#define SERVO_LEFT
-#define SERVO_RIGHT
-#define FLAME_IN
-#define FAN_OUT
-#define LINE_SENSOR_IN
-#define CYCLE_BUTTON_IN
+#define US_PING 22
+#define US_ECHO 23
+#define STEPPER_STEP 24
+#define STEPPER_DIR 25
+#define SERVO_LEFT 0
+#define SERVO_RIGHT 1
+#define FLAME_IN 2
+#define FAN_OUT 26
+#define LINE_SENSOR_IN 4
+#define CYCLE_BUTTON_IN 27
+#define ENCODER_IN_LEFT 28
+#define ENCODER_IN_RIGHT 29
 
 #define HALT 90
-#define LEFT_FWD  //Decide on a speed for the motor
-#define LEFT_BKWD
-#define RIGHT_FWD
-#define RIGHT_BKWD
+#define LEFT_BKWD 60
+#define LEFT_FWD 120
+#define RIGHT_FWD 60
+#define RIGHT_BKWD 120
+#define DEBUG_PERIOD 200
 
 Servo leftServo;
 Servo rightServo;
 
-boolean isDebugSonar;
-boolean isDebugStepper;
-boolean isDebugServo;
-boolean isDebugFlame;
-boolean isDebugFan;
-boolean isDebugLineSensor;
+boolean isDebugSonar = 1;
+boolean isDebugStepper = 0;
+boolean isDebugServo = 0;
+boolean isDebugFlame = 0;
+boolean isDebugFan = 0;
+boolean isDebugLineSensor = 1;
 
 boolean stepDir = 0;
 
-State state;
+int state;
 
 void setup() {
 	ultrasonic myUltraSonic(US_PING, US_ECHO);
@@ -83,6 +86,7 @@ void loop() {
 			if(isDebugFan) {
 				debugFan();
 				delay(DEBUG_PERIOD);
+				digitalWrite(FAN_OUT, LOW);
 			}
 			break;
 		case 5:
@@ -91,13 +95,11 @@ void loop() {
 				delay(DEBUG_PERIOD);
 			}
 			break;
-		case default:
-			break;
 	}
 }
 void debugSonar() {
 	Serial.println("-----------SONAR DEBUG------------");
-	float dist = myUltraSonic.distance();
+	String dist = String(myUltraSonic.distance());
 	Serial.println("DISTANCE READING: %d", dist);
 	Serial.println("----------------------------------");
 }
@@ -144,13 +146,18 @@ void debugServo() {
 }
 void debugFlame() {
 	Serial.println("---------FLAME SENSOR DEBUG------");
-	int temp = analogRead(FLAME_IN);
+	String temp = String(analogRead(FLAME_IN));
 	Serial.println("FLAME READING: %d", temp);
+	Serial.println("---------------------------------");
+}
+void debugFan() {
+	Serial.println("----------TESTING FAN------------");
+	digitalWrite(FAN_OUT, HIGH);
 	Serial.println("---------------------------------");
 }
 void debugLineSensor() {
 	Serial.println("---------LINE SENSOR DEBUG-------");
-	int line = analogRead(LINE_SENSOR_IN);
+	String line = String(analogRead(LINE_SENSOR_IN));
 	Serial.println("LINE SENSOR READING: %d", line);
 	Serial.println("---------------------------------");
 }
@@ -159,7 +166,7 @@ void changeStepDir() {
 	digitalWrite(STEPPER_DIR, stepDir);
 }
 void stepMotorTest() {
-	for(i=0;i<10;i++) {
+	for(int i=0;i<10;i++) {
 		digitalWrite(STEPPER_STEP, HIGH);
 		delay(50);
 		digitalWrite(STEPPER_STEP, LOW);
@@ -168,5 +175,10 @@ void stepMotorTest() {
 }
 void cycleISR() {
 	boolean isButtonPressed = digitalRead(CYCLE_BUTTON_IN);
-	//IF THE BUTTON IS PUSHED CYCLE STATES
+	if(!isButtonPressed) {
+		state++;
+		if(state >= 6) {
+			state = 0;
+		}
+	}
 }
