@@ -166,3 +166,7 @@ void stepMotorTest() {
 		delay(100);
 	}
 }
+void cycleISR() {
+	boolean isButtonPressed = digitalRead(CYCLE_BUTTON_IN);
+	//IF THE BUTTON IS PUSHED CYCLE STATES
+}
