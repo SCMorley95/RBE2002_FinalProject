@@ -10,7 +10,7 @@
 #define SERVO_RIGHT 1
 #define FLAME_IN 2
 #define FAN_OUT 26
-#define LINE_SENSOR_IN 4
+#define LINE_SENSOR_IN 3
 #define CYCLE_BUTTON_IN 27
 #define ENCODER_IN_LEFT 28
 #define ENCODER_IN_RIGHT 29
