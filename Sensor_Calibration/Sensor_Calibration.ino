@@ -1,11 +1,11 @@
 #include <Servo.h>
-#include <Serial.h>
+//#include <Serial.h>
 #include <ultrasonic.h>
 
-#define US_PING 22
-#define US_ECHO 23
-#define STEPPER_STEP 24
-#define STEPPER_DIR 25
+#define US_PING 24
+#define US_ECHO 25
+#define STEPPER_STEP 22
+#define STEPPER_DIR 23
 #define SERVO_LEFT 0
 #define SERVO_RIGHT 1
 #define FLAME_IN 2
@@ -36,8 +36,9 @@ boolean stepDir = 0;
 
 int state;
 
+ultrasonic myUltraSonic (US_PING, US_ECHO);
+
 void setup() {
-	ultrasonic myUltraSonic(US_PING, US_ECHO);
 
 	Serial.begin(9600);
 	pinMode(US_PING, OUTPUT);
@@ -96,11 +97,17 @@ void loop() {
 			}
 			break;
 	}
+	state++;
+	if(state >= 6) {
+		state = 0;
+	}
 }
 void debugSonar() {
 	Serial.println("-----------SONAR DEBUG------------");
-	String dist = String(myUltraSonic.distance());
-	Serial.println("DISTANCE READING: %d", dist);
+	float distFloat = myUltraSonic.distance();
+	String dist = String(distFloat);
+	Serial.print("DISTANCE READING:");
+	Serial.println(dist);
 	Serial.println("----------------------------------");
 }
 void debugStepper() {
@@ -142,12 +149,13 @@ void debugServo() {
 	leftServo.write(HALT);
 	rightServo.write(HALT);
 	delay(200);
-	Serial.println("---------------------------------")
+	Serial.println("---------------------------------");
 }
 void debugFlame() {
 	Serial.println("---------FLAME SENSOR DEBUG------");
 	String temp = String(analogRead(FLAME_IN));
-	Serial.println("FLAME READING: %d", temp);
+	Serial.print("FLAME READING: ");
+	Serial.println(temp);
 	Serial.println("---------------------------------");
 }
 void debugFan() {
@@ -158,7 +166,8 @@ void debugFan() {
 void debugLineSensor() {
 	Serial.println("---------LINE SENSOR DEBUG-------");
 	String line = String(analogRead(LINE_SENSOR_IN));
-	Serial.println("LINE SENSOR READING: %d", line);
+	Serial.print("LINE SENSOR READING: ");
+	Serial.println(line);
 	Serial.println("---------------------------------");
 }
 void changeStepDir() {
