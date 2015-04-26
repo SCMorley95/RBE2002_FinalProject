@@ -1,41 +1,93 @@
-#include <QueueList.h> //download this!!
-#include <StepperMotor.h>
-#include <Serial.h>
+/* TODO:
+Get PID implemented
+Debug stuff
+Get LCD implemented
+Get Accelerometer implemented
+*/
 
-#define TURRET_DIR_FORWARDS true;
-#define TURRET_DIR_BACKWARDS false;
+#include <TimerOne.h>
+#include <PID_v1.h>
+#include <Servo.h>
+#include <Encoder.h>
+#include <ultrasonic.h>
 
-boolean isTurretRotation = true;
-boolean turretDirection = TURRET_DIR_FORWARDS;
+#define US_PING 24
+#define US_ECHO 25
+#define STEPPER_STEP 22
+#define STEPPER_DIR 23
+#define SERVO_LEFT 0
+#define SERVO_RIGHT 1
+#define FLAME_IN 2
+#define FAN_OUT 26
+#define LINE_SENSOR_IN 3
+#define CYCLE_BUTTON_IN 27
+#define ENCODER_IN_LEFT_1 28
+#define ENCODER_IN_LEFT_2
+#define ENCODER_IN_RIGHT_1 29
+#define ENCODER_IN_RIGHT_2
+#define LIDAR_IN 30
+
+#define US_DISTANCE_THRESHOLD
+#define LIDAR_THRESHOLD
+#define LINE_SENSOR_THRESHOLD
+#define FLAME_THRESHOLD
+
+#define HALT 90
+#define LEFT_BKWD 60
+#define LEFT_FWD 120
+#define RIGHT_FWD 60
+#define RIGHT_BKWD 120
+
+#define WHEEL_CIRCUMFRENCE 8.6393725
+
+boolean isTurretRotation = 1;
+boolean turretDirection = 0;
+boolean isStepping = 0
+
+int turretPos = 0;
+
+Servo motorLeft;
+Servo motorRight;
+Servo fanMotor;
+
+int xPos = 0;
+int yPos = 0;
+directionalArray dirArray(0, 1);
+
+Encoder encLeft (ENCODER_IN_LEFT_1, ENCODER_IN_LEFT_2);
+Encoder encRight (ENCODER_IN_RIGHT_1, ENCODER_IN_RIGHT_2);
+
+ultrasonic myUltraSonic (US_PING, US_ECHO);
 
 void setup() {
-	StepperMotor turretMotor = new StepperMotor(STEP_PIN, DIR_PIN);
-	//instantiate Encoder module
-	//Gyro module
-	//PID module
-	//Wheel controller module
-	//Turret controller module
-	//Flame sensor module
-	//IR module
-	//Ultrasonic module
-	//Display module
+	Timer1.initialize(STEPPER_PERIOD);
+	Timer1.attachInterrupt(turretISR);
+	motorLeft.attach(SERVO_LEFT);
+	motorRight.attach(SERVO_RIGHT);
+	fanMotor.attach(FAN_OUT);
 }
 void loop() {
 	state = setObjective();
+	if(isTurretRotation) {
+		noInterrupts();
+		boolean doStep = isStepping;
+		isStepping = 0;
+		interrupts();
+		digitalWrite(STEPPER_STEP, doStep);
+	}
 	switch(state) {
 		case default:
 			break;
 		case 0: //about to go off cliff
-			stopRobot();
+			setRobotSpeed(ROBOT_STOP);
 			moveFwd(-10);
 			turnDeg(-90);
 			break;
 		case 1: //flame detected
 			stopRobot();
 			isTurretRotation = false;
-			while(!flameOut()) {
-				fanMotor.write(FAN_FULL_ON);
-			}
+			fanMotor.write(180);
+			delay(5000);
 			reportLocation();
 			break;
 		case 2: //walls on front and right
@@ -78,28 +130,84 @@ int setObjective() {
 	}
 }
 boolean checkLine() {
-	//check the line sensor to detect if we are over a black line ( black line == cliff == SCARY!!!!!)
+	return analogRead(LINE_SENSOR_IN) > LINE_SENSOR_THRESHOLD;
 }
 boolean wallFront() {
-	//check the ultrasonic sensor to see if the detected distance is under (insert appropriate comparator here)
+	return myUltraSonic.distance < US_DISTANCE_THRESHOLD;
 }
 boolean wallSide() {
-	//check the LIDAR to see if (something something LIDAR something something wall on the right)
+	return analogRead(LIDAR_IN) < LIDAR_THRESHOLD;
 }
 boolean isFlame() {
-	//look real hard for a flame
-}
-boolean flameOut() {
-	//look slightly less hard for a flame (or if that ends up not working just slap a timer up in this)
+	return analogRead(FLAME_IN) > FLAME_THRESHOLD;
 }
 void turretISR() {
 	if(isTurretRotation) {
-		turretMotor.step(turretDirection);
-		if(turretMotor.getPos() = 180) {
-			turretDirection = TURRET_DIR_BACKWARDS;
-		}
-		else if(turretMotor.getPos() = 0) {
-			turretDirection = TURRET_DIR_FORWARDS;
+		isStepping = 1;
+		turretPos++;
+		if(turretPos >= TURRET_POS_MAX) {
+			turretDirection = !turretDirection;
+			turretPos = 0;
 		}
 	}
+}
+void moveFwd(int inches) {
+	float deg = inchesToDeg(inches);
+	int encoderOffset = encoderAvg();
+	if(inches < 0) {
+		while(encoderAvg() > deg + encoderOffset) {
+			leftServo.write(LEFT_FWD);
+			rightServo.write(RIGHT_FWD);
+		}
+	}
+	else if(inches > 0) {
+		while(encoderAvg() < deg + encoderOffset) {
+			leftServo.write(LEFT_BKWD);
+			rightServo.write(RIGHT_BKWD);
+		}
+	}
+	leftServo.write(HALT);
+	rightServo.write(HALT);
+}
+void setRobotSpeed(int robotSpeed) {
+	switch (robotSpeed) {
+		case 0: //stop
+			leftServo.write(HALT);
+			rightServo.write(HALT);
+			break;
+		case 1: //forwards
+			leftServo.write(LEFT_FWD);
+			rightServo.write(RIGHT_FWD);
+			break;
+		case 2: //backwards
+			leftServo.write(LEFT_BKWD);
+			rightServo.write(RIGHT_BKWD);
+	}
+}
+float inchesToDeg(int inches) {
+	return (float)inches /WHEEL_CIRCUMFRENCE;
+}
+float degToInches(int deg) {
+	return (deg / 360)*WHEEL_CIRCUMFRENCE;
+}
+int encoderAvg() {
+	return (encLeft.read() + encRight.read()) / 2;
+}
+void resetEncoders() {
+	encLeft.write(0);
+	encRight.write(1);
+}
+void posUpdate() {
+	int distanceTravelled = degToInches(encoderAvg());
+	xPos += distanceTravelled*dirArray.xval();
+	yPos += distanceTravelled*dirArray.yval();
+	resetEncoders();
+}
+void turnDeg(int deg) {
+	posUpdate();
+	dirArray.rotate(deg);
+	//PID witchcraft goes here
+}
+void reportLocation() {
+	//print xPos and yPos on the LCD display
 }
