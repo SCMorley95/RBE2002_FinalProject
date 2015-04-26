@@ -10,7 +10,9 @@ Get Accelerometer implemented
 #include <Servo.h>
 #include <Encoder.h>
 #include <ultrasonic.h>
-#include <directionalArray.h>
+#include <directionalArray.h> //Custom library found in /Github/RBE2002_FinalProject/Libraries
+#include <L3G.h> //Download from the IMU website
+#include <LiquidCrystal.h>
 
 #define US_PING 24
 #define US_ECHO 25
@@ -40,32 +42,45 @@ Get Accelerometer implemented
 #define RIGHT_BKWD 120
 
 #define WHEEL_CIRCUMFRENCE 8.6393725
+#define PVAL
+#define IVAL
+#define DVAL
 
+double Setpoint, Input, Output;
 boolean isTurretRotation = 1;
 boolean turretDirection = 0;
 boolean isStepping = 0
-
 int turretPos = 0;
-
+float gyroOffset;
 Servo motorLeft;
 Servo motorRight;
 Servo fanMotor;
-
 int xPos = 0;
 int yPos = 0;
-directionalArray dirArray(0, 1);
 
+directionalArray dirArray(0, 1);
 Encoder encLeft (ENCODER_IN_LEFT_1, ENCODER_IN_LEFT_2);
 Encoder encRight (ENCODER_IN_RIGHT_1, ENCODER_IN_RIGHT_2);
-
 ultrasonic myUltraSonic (US_PING, US_ECHO);
+PID gyroPID(&Input, &Output, &Setpoint, PVAL, IVAL, DVAL, DIRECT);
+L3G gyro;
+LiquidCrystal lcd(LCD_1, LCD_2, LCD_3, LCD_4, LCD_5, LCD_6);
 
 void setup() {
+	lcd.begin(16,2);
+	Serial.begin(9600);
+	Wire.begin();
+	if(!gyro.init()) {
+		Serial.println("Oh man the Gyro messed up huh, I'll just loop forever");
+		while(1);
+	}
+	gyro.enableDefault();
 	Timer1.initialize(STEPPER_PERIOD);
 	Timer1.attachInterrupt(turretISR);
 	motorLeft.attach(SERVO_LEFT);
 	motorRight.attach(SERVO_RIGHT);
 	fanMotor.attach(FAN_OUT);
+	gyroPID.SetOutputLimits(0, 30);
 }
 void loop() {
 	state = setObjective();
@@ -196,7 +211,7 @@ int encoderAvg() {
 }
 void resetEncoders() {
 	encLeft.write(0);
-	encRight.write(1);
+	encRight.write(0);
 }
 void posUpdate() {
 	int distanceTravelled = degToInches(encoderAvg());
@@ -207,8 +222,26 @@ void posUpdate() {
 void turnDeg(int deg) {
 	posUpdate();
 	dirArray.rotate(deg);
-	//PID witchcraft goes here
+	resetGyroSetpoint();
+	Setpoint = 90 + deg;
+	while(Output > 0.1) {
+		Input = readGyroSensor() + 90;
+		gyroPID.compute();
+		leftServo.write(90 + Output);
+		rightServo.write(90 - Output);
+	}
 }
 void reportLocation() {
-	//print xPos and yPos on the LCD display
+	lcd.clear();
+	lcd.printf("X: %3d", xPos);
+	lcd.setCursor(1,0);
+	lcd.printf("Y: %3d", yPos):
+}
+float readGyroSensor() {
+	gyro.read();
+	return gyro.g.x - gyroOffset;
+}
+void resetGyroSetpoint() {
+	gyro.read();
+	gyroOffset = gyro.g.x;
 }
