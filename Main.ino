@@ -10,6 +10,7 @@ Get Accelerometer implemented
 #include <Servo.h>
 #include <Encoder.h>
 #include <ultrasonic.h>
+#include <directionalArray.h>
 
 #define US_PING 24
 #define US_ECHO 25

@@ -1,4 +1,4 @@
-#include <directionalInt.h>
+#include <directionalArray.h>
 #include <Arduino.h>
 directionalArray::directionalArray(int x_init, int y_init) {
 	_array[0] = x_init;
