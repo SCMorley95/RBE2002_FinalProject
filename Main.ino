@@ -18,8 +18,8 @@ Get Accelerometer implemented
 #define US_ECHO 25
 #define STEPPER_STEP 22
 #define STEPPER_DIR 23
-#define SERVO_LEFT 0
-#define SERVO_RIGHT 1
+#define SERVO_LEFT 10
+#define SERVO_RIGHT 11
 #define FLAME_IN 2
 #define FAN_OUT 26
 #define LINE_SENSOR_IN 3
@@ -29,9 +29,9 @@ Get Accelerometer implemented
 #define ENCODER_IN_RIGHT_1 29
 #define ENCODER_IN_RIGHT_2
 #define LIDAR_IN 30
+#define STEPPER_5V_OUT 12
 
 #define US_DISTANCE_THRESHOLD
-#define LIDAR_THRESHOLD
 #define LINE_SENSOR_THRESHOLD
 #define FLAME_THRESHOLD
 
@@ -61,28 +61,24 @@ int yPos = 0;
 directionalArray dirArray(0, 1);
 Encoder encLeft (ENCODER_IN_LEFT_1, ENCODER_IN_LEFT_2);
 Encoder encRight (ENCODER_IN_RIGHT_1, ENCODER_IN_RIGHT_2);
-ultrasonic myUltraSonic (US_PING, US_ECHO);
+ultrasonic ultraF (US_PING, US_ECHO);
+ultrasonic ultraR (US_PING_1, US_ECHO_1);
 PID gyroPID(&Input, &Output, &Setpoint, PVAL, IVAL, DVAL, DIRECT);
-L3G gyro;
 LiquidCrystal lcd(LCD_1, LCD_2, LCD_3, LCD_4, LCD_5, LCD_6);
 
 void setup() {
 	lcd.begin(16,2);
 	Serial.begin(9600);
-	Wire.begin();
-	if(!gyro.init()) {
-		Serial.println("Oh man the Gyro messed up huh, I'll just loop forever");
-		while(1);
-	}
-	gyro.enableDefault();
 	Timer1.initialize(STEPPER_PERIOD);
 	Timer1.attachInterrupt(turretISR);
 	motorLeft.attach(SERVO_LEFT);
 	motorRight.attach(SERVO_RIGHT);
 	fanMotor.attach(FAN_OUT);
 	gyroPID.SetOutputLimits(0, 30);
+	pinMode(STEPPER_5V_OUT, OUTPUT);
 }
 void loop() {
+	digitalWrite(STEPPER_5V_OUT, HIGH);
 	state = setObjective();
 	if(isTurretRotation) {
 		noInterrupts();
@@ -149,10 +145,10 @@ boolean checkLine() {
 	return analogRead(LINE_SENSOR_IN) > LINE_SENSOR_THRESHOLD;
 }
 boolean wallFront() {
-	return myUltraSonic.distance < US_DISTANCE_THRESHOLD;
+	return ultraF.distance < US_DISTANCE_THRESHOLD;
 }
 boolean wallSide() {
-	return analogRead(LIDAR_IN) < LIDAR_THRESHOLD;
+	return ultraR.distance < US_DISTANCE_THRESHOLD;
 }
 boolean isFlame() {
 	return analogRead(FLAME_IN) > FLAME_THRESHOLD;
