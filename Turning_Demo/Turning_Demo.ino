@@ -6,10 +6,10 @@
 
 #define LEFT_MOTOR_IN 11
 #define RIGHT_MOTOR_IN 10
-#define LEFT_FWD 105
-#define RIGHT_FWD 80
-#define LEFT_BKWD 75
-#define RIGHT_BKWD 100
+#define LEFT_FWD 108
+#define RIGHT_FWD 75
+#define LEFT_BKWD 72
+#define RIGHT_BKWD 105
 #define ENCODER_IN_LEFT_1 2
 #define ENCODER_IN_LEFT_2 3
 #define ENCODER_IN_RIGHT_1 18
@@ -48,8 +48,6 @@ PID myPID(&Input, &Output, &Setpoint, 2, 3, 1, REVERSE);
 
 void setup() {
 	Serial.begin(9600);
-	//Timer1.initialize(1000000);
-	//Timer1.attachInterrupt(hundredMSISR);
 	Input = ultraFront.distance();
 	Setpoint = 4;
 	myPID.SetMode(AUTOMATIC);
@@ -72,8 +70,12 @@ void loop() {
 	Serial.print("Input:  ");
 	Serial.println(Input);
 	leftMotorOffset = Output;
-	int state = getObjective();
-	//int state = 1;
+	//int state = getObjective();
+	int state = 1;
+	if(!digitalRead(BUTTON_IN)) {
+		state = 4;
+		delay(500);
+	}
 	Serial.print("State:   ");
 	Serial.println(state);
 	switch (state) {
