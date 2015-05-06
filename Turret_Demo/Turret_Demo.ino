@@ -47,7 +47,7 @@ void loop() {
 	Serial.print("Right Encoder:  :");
 	Serial.println(rightIn);
 	*/
-	if(fireSensor < 300 && fireSensor != 0) {
+	if(fireSensor < 200 && fireSensor != 0) {
 		noInterrupts();
 		digitalWrite(STEPPER_STEP, LOW);
 		digitalWrite(FAN_OUT, HIGH);
